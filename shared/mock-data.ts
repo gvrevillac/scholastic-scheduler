@@ -1,4 +1,4 @@
-import { Classroom, Subject, Teacher, TimeSlot, MasterScheduleEntry } from './types';
+import { Classroom, Subject, Teacher, TimeSlot, MasterScheduleEntry, User, Chat, ChatMessage } from './types';
 export const CLASSROOMS: Classroom[] = [
   { id: '1a', name: 'Grade 1-A' },
   { id: '1b', name: 'Grade 1-B' },
@@ -31,22 +31,27 @@ export const TIME_SLOTS: TimeSlot[] = [
   { id: 'tue2', day: 'Tuesday', startTime: '09:00', endTime: '10:00' },
   { id: 'wed1', day: 'Wednesday', startTime: '08:00', endTime: '09:00' },
   { id: 'wed2', day: 'Wednesday', startTime: '09:00', endTime: '10:00' },
+  { id: 'thu1', day: 'Thursday', startTime: '08:00', endTime: '09:00' },
+  { id: 'thu2', day: 'Thursday', startTime: '09:00', endTime: '10:00' },
 ];
-// Master Schedule: When each subject happens for each class
+// Master Schedule: Defines when each subject occurs for each class
 export const MASTER_SCHEDULE: MasterScheduleEntry[] = [
   // Grade 1-A
   { classroomId: '1a', subjectId: 'math', timeSlotId: 'mon1' },
   { classroomId: '1a', subjectId: 'eng', timeSlotId: 'mon2' },
   { classroomId: '1a', subjectId: 'sci', timeSlotId: 'tue1' },
+  { classroomId: '1a', subjectId: 'math', timeSlotId: 'wed1' },
   // Grade 1-B
   { classroomId: '1b', subjectId: 'sci', timeSlotId: 'mon1' },
   { classroomId: '1b', subjectId: 'math', timeSlotId: 'mon2' },
   { classroomId: '1b', subjectId: 'hist', timeSlotId: 'tue1' },
+  { classroomId: '1b', subjectId: 'sci', timeSlotId: 'wed1' },
   // Grade 2-A
   { classroomId: '2a', subjectId: 'art', timeSlotId: 'mon1' },
   { classroomId: '2a', subjectId: 'mus', timeSlotId: 'mon2' },
   { classroomId: '2a', subjectId: 'phys', timeSlotId: 'wed1' },
+  { classroomId: '2a', subjectId: 'comp', timeSlotId: 'thu1' },
 ];
-export const MOCK_USERS = [];
-export const MOCK_CHATS = [];
-export const MOCK_CHAT_MESSAGES = [];
+export const MOCK_USERS: User[] = [];
+export const MOCK_CHATS: Chat[] = [];
+export const MOCK_CHAT_MESSAGES: ChatMessage[] = [];
