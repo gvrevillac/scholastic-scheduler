@@ -29,9 +29,10 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const data = await api<Assignment[]>('/api/assignments');
-      set({ assignments: data, loading: false });
+      set({ assignments: data ?? [], loading: false });
     } catch (err: any) {
-      set({ error: err.message, loading: false });
+      console.error('[Store] Fetch failed:', err);
+      set({ error: "Could not sync assignments from server.", loading: false });
     }
   },
   addAssignment: async (payload) => {
@@ -42,10 +43,13 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
         body: JSON.stringify(payload),
       });
       const current = get().assignments;
+      // Filter out any existing assignment for the same slot (UPSERT)
       const filtered = current.filter(a => a.id !== newAssignment.id);
       set({ assignments: [...filtered, newAssignment], loading: false });
     } catch (err: any) {
-      set({ error: err.message, loading: false });
+      console.error('[Store] Save failed:', err);
+      set({ error: "Unable to save assignment. Please try again.", loading: false });
+      throw err;
     }
   },
   removeAssignment: async (id) => {
@@ -57,12 +61,17 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
         loading: false,
       });
     } catch (err: any) {
-      set({ error: err.message, loading: false });
+      console.error('[Store] Delete failed:', err);
+      set({ error: "Failed to remove assignment.", loading: false });
+      throw err;
     }
   },
 }));
-// Selectors for resolved schedule and conflict detection
+/**
+ * Derives a full schedule by merging master schedule slots with dynamic teacher assignments.
+ */
 export const getResolvedSchedule = (assignments: Assignment[]): ResolvedEntry[] => {
+  if (!assignments) return MASTER_SCHEDULE.map(m => ({ ...m }));
   return MASTER_SCHEDULE.map(master => {
     const assignment = assignments.find(
       a => a.classroomId === master.classroomId && a.subjectId === master.subjectId
@@ -73,20 +82,28 @@ export const getResolvedSchedule = (assignments: Assignment[]): ResolvedEntry[] 
     };
   });
 };
+/**
+ * Identifies instances where a teacher is assigned to multiple classes in the same time slot.
+ */
 export const getConflicts = (assignments: Assignment[]): Conflict[] => {
   const resolved = getResolvedSchedule(assignments);
   const teacherTimeMap: Record<string, Record<string, string[]>> = {};
   resolved.forEach(entry => {
-    if (!entry.teacherId) return;
-    if (!teacherTimeMap[entry.teacherId]) teacherTimeMap[entry.teacherId] = {};
+    if (!entry.teacherId || !entry.timeSlotId) return;
+    if (!teacherTimeMap[entry.teacherId]) {
+      teacherTimeMap[entry.teacherId] = {};
+    }
     if (!teacherTimeMap[entry.teacherId][entry.timeSlotId]) {
       teacherTimeMap[entry.teacherId][entry.timeSlotId] = [];
     }
-    teacherTimeMap[entry.teacherId][entry.timeSlotId].push(entry.classroomId);
+    // Check if classroom is already tracked to avoid duplicate entries from master schedule repeats
+    if (!teacherTimeMap[entry.teacherId][entry.timeSlotId].includes(entry.classroomId)) {
+      teacherTimeMap[entry.teacherId][entry.timeSlotId].push(entry.classroomId);
+    }
   });
   const conflicts: Conflict[] = [];
-  Object.entries(teacherTimeMap).forEach(([teacherId, timeSlots]) => {
-    Object.entries(timeSlots).forEach(([timeSlotId, classroomIds]) => {
+  Object.entries(teacherTimeMap).forEach(([teacherId, slots]) => {
+    Object.entries(slots).forEach(([timeSlotId, classroomIds]) => {
       if (classroomIds.length > 1) {
         conflicts.push({ teacherId, timeSlotId, classroomIds });
       }
