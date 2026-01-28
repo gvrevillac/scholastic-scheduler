@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSchedulerStore, getResolvedSchedule, getConflicts } from '@/store/scheduler-store';
 import { CLASSROOMS, SUBJECTS, TEACHERS, TIME_SLOTS } from '@shared/mock-data';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConflictBadge } from './ConflictBadge';
@@ -11,6 +11,7 @@ export function ScheduleVisualizer() {
   const assignments = useSchedulerStore(s => s.assignments);
   const resolved = useMemo(() => getResolvedSchedule(assignments), [assignments]);
   const conflicts = useMemo(() => getConflicts(assignments), [assignments]);
+  const [activeTab, setActiveTab] = useState('time');
   const findConflict = (teacherId?: string, timeSlotId?: string) => {
     if (!teacherId || !timeSlotId) return null;
     return conflicts.find(c => c.teacherId === teacherId && c.timeSlotId === timeSlotId);
@@ -21,13 +22,42 @@ export function ScheduleVisualizer() {
         <CardTitle className="text-xl">Visualization Engine</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="time" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8 bg-secondary/30">
-            <TabsTrigger value="time" className="gap-2"><Clock className="w-4 h-4" /> Time Grid</TabsTrigger>
-            <TabsTrigger value="classroom" className="gap-2"><Users className="w-4 h-4" /> By Class</TabsTrigger>
-            <TabsTrigger value="teacher" className="gap-2"><Calendar className="w-4 h-4" /> By Teacher</TabsTrigger>
-          </TabsList>
-          <TabsContent value="time" className="overflow-x-auto">
+        <div className="w-full" role="tablist">
+          <div className="grid w-full grid-cols-3 mb-8 bg-secondary/30 rounded-lg p-1 h-auto">
+            <button 
+              type="button" 
+              onClick={() => setActiveTab('time')} 
+              data-state={activeTab === 'time' ? 'active' : 'inactive'} 
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow hover:bg-accent hover:text-accent-foreground h-full w-full" 
+              role="tab" 
+              aria-selected={activeTab === 'time'}
+            >
+              <Clock className="w-4 h-4" /> Time Grid
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setActiveTab('classroom')} 
+              data-state={activeTab === 'classroom' ? 'active' : 'inactive'} 
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow hover:bg-accent hover:text-accent-foreground h-full w-full" 
+              role="tab" 
+              aria-selected={activeTab === 'classroom'}
+            >
+              <Users className="w-4 h-4" /> By Class
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setActiveTab('teacher')} 
+              data-state={activeTab === 'teacher' ? 'active' : 'inactive'} 
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow hover:bg-accent hover:text-accent-foreground h-full w-full" 
+              role="tab" 
+              aria-selected={activeTab === 'teacher'}
+            >
+              <Calendar className="w-4 h-4" /> By Teacher
+            </button>
+          </div>
+        </div>
+        {activeTab === 'time' && (
+          <div className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 overflow-x-auto" role="tabpanel">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -69,8 +99,10 @@ export function ScheduleVisualizer() {
                 ))}
               </TableBody>
             </Table>
-          </TabsContent>
-          <TabsContent value="classroom">
+          </div>
+        )}
+        {activeTab === 'classroom' && (
+          <div className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" role="tabpanel">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {CLASSROOMS.map(classroom => (
                 <Card key={classroom.id} className="border bg-slate-50/30 dark:bg-slate-900/30">
@@ -106,8 +138,10 @@ export function ScheduleVisualizer() {
                 </Card>
               ))}
             </div>
-          </TabsContent>
-          <TabsContent value="teacher">
+          </div>
+        )}
+        {activeTab === 'teacher' && (
+          <div className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" role="tabpanel">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {TEACHERS.map(teacher => {
                 const teacherSchedule = resolved.filter(r => r.teacherId === teacher.id);
@@ -144,8 +178,8 @@ export function ScheduleVisualizer() {
                 );
               })}
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
