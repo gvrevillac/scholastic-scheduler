@@ -8,6 +8,7 @@ import { GraduationCap, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { exportScheduleToPdf } from '@/lib/export-utils';
+import { exportToExcel } from '@/lib/excel-utils';
 export default function DashboardPage() {
   const fetchAssignments = useSchedulerStore(s => s.fetchAssignments);
   const assignments = useSchedulerStore(s => s.assignments);
@@ -27,6 +28,20 @@ export default function DashboardPage() {
       toast.error("Failed to generate PDF report");
     }
   };
+
+  const handleExcelExport = () => {
+    if (assignments.length === 0) {
+      toast.error("No assignments to export!");
+      return;
+    }
+    try {
+      exportToExcel(assignments);
+      toast.success("Excel workbook generated successfully");
+    } catch (err) {
+      toast.error("Failed to generate Excel file");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,6 +66,15 @@ export default function DashboardPage() {
               >
                 <FileDown className="w-4 h-4" />
                 Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                onClick={handleExcelExport}
+                disabled={loading}
+              >
+                <FileDown className="w-4 h-4 text-green-600" />
+                Export XLSX
               </Button>
               <ThemeToggle className="relative top-0 right-0" />
             </div>
