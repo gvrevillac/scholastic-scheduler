@@ -11,8 +11,9 @@ export function ScheduleVisualizer() {
   const subjects = useSchedulerStore(s => s.subjects);
   const teachers = useSchedulerStore(s => s.teachers);
   const timeSlots = useSchedulerStore(s => s.timeSlots);
-  const resolved = useMemo(() => getResolvedSchedule(assignments), [assignments]);
-  const conflicts = useMemo(() => getConflicts(assignments), [assignments]);
+  const masterSchedule = useSchedulerStore(s => s.masterSchedule);
+  const resolved = useMemo(() => getResolvedSchedule(assignments, masterSchedule), [assignments, masterSchedule]);
+  const conflicts = useMemo(() => getConflicts(assignments, masterSchedule), [assignments, masterSchedule]);
   const [activeTab, setActiveTab] = useState('time');
   const findConflict = (teacherId?: string, timeSlotId?: string) => {
     if (!teacherId || !timeSlotId) return null;
@@ -21,7 +22,9 @@ export function ScheduleVisualizer() {
   return (
     <Card className="shadow-soft border-none bg-card">
       <CardHeader className="pb-7">
-        <CardTitle className="text-xl">Visualization Engine</CardTitle>
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <Clock className="w-5 h-5 text-indigo-600" /> Visualization Engine
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-8 bg-secondary/30 rounded-lg p-1">
@@ -42,33 +45,33 @@ export function ScheduleVisualizer() {
           ))}
         </div>
         {activeTab === 'time' && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-40 sticky left-0 z-10 bg-background">Time Slot</TableHead>
-                  {classrooms.map(c => <TableHead key={c.id} className="min-w-[180px] text-center">{c.name}</TableHead>)}
+                  <TableHead className="w-40 sticky left-0 z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Time Slot</TableHead>
+                  {classrooms.map(c => <TableHead key={c.id} className="min-w-[180px] text-center border-l">{c.name}</TableHead>)}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {timeSlots.map(slot => (
                   <TableRow key={slot.id}>
-                    <TableCell className="font-medium sticky left-0 z-10 bg-background border-r">
-                      <div className="text-[10px] text-muted-foreground uppercase">{slot.day}</div>
-                      <div>{slot.startTime} - {slot.endTime}</div>
+                    <TableCell className="font-medium sticky left-0 z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r">
+                      <div className="text-[10px] text-indigo-600 font-bold uppercase">{slot.day}</div>
+                      <div className="text-sm">{slot.startTime} - {slot.endTime}</div>
                     </TableCell>
                     {classrooms.map(classroom => {
                       const entry = resolved.find(e => e.timeSlotId === slot.id && e.classroomId === classroom.id);
-                      if (!entry) return <TableCell key={classroom.id} className="bg-slate-50/10" />;
+                      if (!entry) return <TableCell key={classroom.id} className="bg-slate-50/10 border-l" />;
                       const subject = subjects.find(s => s.id === entry.subjectId);
                       const teacher = teachers.find(t => t.id === entry.teacherId);
                       const conflict = findConflict(entry.teacherId, entry.timeSlotId);
                       return (
-                        <TableCell key={classroom.id} className="p-2">
-                          <div className={cn("rounded-md p-3 h-full border-l-4", conflict ? "bg-destructive/5 border-destructive" : "bg-white dark:bg-slate-800 border-indigo-500 shadow-sm")}>
+                        <TableCell key={classroom.id} className="p-2 border-l">
+                          <div className={cn("rounded-md p-3 h-full border-l-4 transition-all hover:shadow-md", conflict ? "bg-destructive/5 border-destructive" : "bg-white dark:bg-slate-800 border-indigo-500 shadow-sm")}>
                             <div className="font-bold text-sm" style={{ color: subject?.color }}>{subject?.name || 'Subject'}</div>
                             <div className="text-xs text-muted-foreground flex items-center justify-between mt-1">
-                              {teacher?.name || "Unassigned"}
+                              <span className="truncate">{teacher?.name || "Unassigned"}</span>
                               {conflict && <ConflictBadge otherClassroomIds={conflict.classroomIds.filter(id => id !== classroom.id)} />}
                             </div>
                           </div>
@@ -85,7 +88,7 @@ export function ScheduleVisualizer() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {classrooms.map(classroom => (
               <Card key={classroom.id} className="border bg-slate-50/30">
-                <CardHeader className="py-3 bg-white border-b"><CardTitle className="text-sm font-bold">{classroom.name}</CardTitle></CardHeader>
+                <CardHeader className="py-3 bg-white dark:bg-slate-900 border-b"><CardTitle className="text-sm font-bold">{classroom.name}</CardTitle></CardHeader>
                 <CardContent className="p-3 space-y-2">
                   {timeSlots.map(slot => {
                     const entry = resolved.find(e => e.timeSlotId === slot.id && e.classroomId === classroom.id);
@@ -94,13 +97,13 @@ export function ScheduleVisualizer() {
                     const teacher = teachers.find(t => t.id === entry.teacherId);
                     const conflict = findConflict(entry.teacherId, entry.timeSlotId);
                     return (
-                      <div key={slot.id} className="p-2 bg-white rounded border shadow-sm">
-                        <div className="flex justify-between text-[9px] text-muted-foreground"><span>{slot.day}</span><span>{slot.startTime}</span></div>
+                      <div key={slot.id} className="p-2 bg-white dark:bg-slate-800 rounded border shadow-sm">
+                        <div className="flex justify-between text-[9px] text-muted-foreground font-medium"><span>{slot.day}</span><span>{slot.startTime}</span></div>
                         <div className="flex justify-between items-center mt-1">
-                          <span className="font-semibold text-xs" style={{ color: subject?.color }}>{subject?.name}</span>
-                          <span className="text-[10px]">{teacher?.name || '?'}</span>
+                          <span className="font-bold text-xs" style={{ color: subject?.color }}>{subject?.name}</span>
+                          <span className="text-[10px] font-medium">{teacher?.name || 'Unassigned'}</span>
                         </div>
-                        {conflict && <div className="mt-1"><ConflictBadge otherClassroomIds={conflict.classroomIds.filter(id => id !== classroom.id)} /></div>}
+                        {conflict && <div className="mt-2"><ConflictBadge otherClassroomIds={conflict.classroomIds.filter(id => id !== classroom.id)} /></div>}
                       </div>
                     );
                   })}
@@ -115,7 +118,10 @@ export function ScheduleVisualizer() {
               const schedule = resolved.filter(r => r.teacherId === teacher.id);
               return (
                 <Card key={teacher.id} className="border">
-                  <CardHeader className="py-3 bg-indigo-50"><CardTitle className="text-sm font-bold">{teacher.name}</CardTitle></CardHeader>
+                  <CardHeader className="py-3 bg-indigo-50/50 dark:bg-indigo-950/20"><CardTitle className="text-sm font-bold flex justify-between items-center">
+                    {teacher.name}
+                    <span className="text-[10px] text-muted-foreground bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border">{teacher.specialty}</span>
+                  </CardTitle></CardHeader>
                   <CardContent className="p-0">
                     {schedule.length > 0 ? (
                       <Table>
@@ -123,11 +129,13 @@ export function ScheduleVisualizer() {
                           {schedule.map((entry, idx) => {
                             const slot = timeSlots.find(t => t.id === entry.timeSlotId);
                             const classroom = classrooms.find(c => c.id === entry.classroomId);
+                            const subject = subjects.find(s => s.id === entry.subjectId);
                             const conflict = findConflict(teacher.id, entry.timeSlotId);
                             return (
                               <TableRow key={idx}>
-                                <TableCell className="py-2 text-[11px]">{slot?.day} {slot?.startTime}</TableCell>
-                                <TableCell className="py-2 text-[11px] font-medium">{classroom?.name}</TableCell>
+                                <TableCell className="py-2 text-[11px] font-medium text-muted-foreground">{slot?.day} {slot?.startTime}</TableCell>
+                                <TableCell className="py-2 text-[11px] font-bold">{classroom?.name}</TableCell>
+                                <TableCell className="py-2 text-[11px] font-medium" style={{ color: subject?.color }}>{subject?.name}</TableCell>
                                 <TableCell className="py-2 text-right">{conflict && <ConflictBadge otherClassroomIds={conflict.classroomIds.filter(id => id !== entry.classroomId)} />}</TableCell>
                               </TableRow>
                             );

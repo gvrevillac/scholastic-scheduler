@@ -1,13 +1,14 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertCircle } from 'lucide-react';
-import { CLASSROOMS } from '@shared/mock-data';
+import { useSchedulerStore } from '@/store/scheduler-store';
 interface ConflictBadgeProps {
   otherClassroomIds: string[];
 }
 export function ConflictBadge({ otherClassroomIds }: ConflictBadgeProps) {
+  const classrooms = useSchedulerStore(s => s.classrooms);
   const names = otherClassroomIds
-    .map(id => CLASSROOMS.find(c => c.id === id)?.name || id)
+    .map(id => classrooms.find(c => c.id === id)?.name || id)
     .join(', ');
   return (
     <Tooltip>
@@ -17,8 +18,8 @@ export function ConflictBadge({ otherClassroomIds }: ConflictBadgeProps) {
           <span>CONFLICT</span>
         </div>
       </TooltipTrigger>
-      <TooltipContent 
-        side="top" 
+      <TooltipContent
+        side="top"
         className="bg-destructive text-destructive-foreground border-none shadow-lg px-3 py-1.5"
       >
         <p className="text-xs font-semibold">Teacher double-booked with:</p>

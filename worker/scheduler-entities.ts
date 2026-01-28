@@ -1,6 +1,6 @@
 import { IndexedEntity } from "./core-utils";
-import { Assignment, Classroom, Subject, Teacher, TimeSlot } from "@shared/types";
-import { CLASSROOMS, SUBJECTS, TEACHERS, TIME_SLOTS } from "@shared/mock-data";
+import { Assignment, Classroom, Subject, Teacher, TimeSlot, MasterScheduleEntry } from "@shared/types";
+import { CLASSROOMS, SUBJECTS, TEACHERS, TIME_SLOTS, MASTER_SCHEDULE } from "@shared/mock-data";
 export class AssignmentEntity extends IndexedEntity<Assignment> {
   static readonly entityName = "assignment";
   static readonly indexName = "assignments";
@@ -11,6 +11,16 @@ export class AssignmentEntity extends IndexedEntity<Assignment> {
       return `${s.classroomId}_${s.subjectId}`;
     }
     return s.id;
+  }
+}
+export class MasterScheduleEntity extends IndexedEntity<MasterScheduleEntry & { id: string }> {
+  static readonly entityName = "masterschedule";
+  static readonly indexName = "masterschedules";
+  static readonly initialState: MasterScheduleEntry & { id: string } = { id: "", classroomId: "", subjectId: "", timeSlotId: "" };
+  static seedData = MASTER_SCHEDULE.map(m => ({ ...m, id: `${m.classroomId}_${m.timeSlotId}` }));
+  static keyOf<U extends { id: string }>(state: U): string {
+    const s = state as unknown as MasterScheduleEntry;
+    return `${s.classroomId}_${s.timeSlotId}`;
   }
 }
 export class ClassroomEntity extends IndexedEntity<Classroom> {

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { Assignment, Classroom, Teacher, Subject, TimeSlot, MasterScheduleEntry } from '@shared/types';
 import { api } from '@/lib/api-client';
-import { MASTER_SCHEDULE } from '@shared/mock-data';
 export interface ResolvedEntry {
   classroomId: string;
   subjectId: string;
@@ -19,14 +18,15 @@ interface SchedulerState {
   teachers: Teacher[];
   subjects: Subject[];
   timeSlots: TimeSlot[];
+  masterSchedule: MasterScheduleEntry[];
   loading: boolean;
   error: string | null;
   fetchAssignments: () => Promise<void>;
   fetchAllMasters: () => Promise<void>;
   addAssignment: (assignment: Omit<Assignment, 'id'>) => Promise<void>;
   removeAssignment: (id: string) => Promise<void>;
-  addMaster: (type: 'classrooms'|'teachers'|'subjects'|'time-slots', data: any) => Promise<void>;
-  removeMaster: (type: 'classrooms'|'teachers'|'subjects'|'time-slots', id: string) => Promise<void>;
+  addMaster: (type: 'classrooms'|'teachers'|'subjects'|'time-slots'|'master-schedules', data: any) => Promise<void>;
+  removeMaster: (type: 'classrooms'|'teachers'|'subjects'|'time-slots'|'master-schedules', id: string) => Promise<void>;
 }
 export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   assignments: [],
@@ -34,6 +34,7 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   teachers: [],
   subjects: [],
   timeSlots: [],
+  masterSchedule: [],
   loading: false,
   error: null,
   fetchAssignments: async () => {
@@ -48,13 +49,14 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   fetchAllMasters: async () => {
     set({ loading: true });
     try {
-      const [c, t, s, ts] = await Promise.all([
+      const [c, t, s, ts, ms] = await Promise.all([
         api<Classroom[]>('/api/classrooms'),
         api<Teacher[]>('/api/teachers'),
         api<Subject[]>('/api/subjects'),
         api<TimeSlot[]>('/api/time-slots'),
+        api<MasterScheduleEntry[]>('/api/master-schedules'),
       ]);
-      set({ classrooms: c, teachers: t, subjects: s, timeSlots: ts, loading: false });
+      set({ classrooms: c, teachers: t, subjects: s, timeSlots: ts, masterSchedule: ms, loading: false });
     } catch (err) {
       set({ error: "Failed to fetch resources", loading: false });
     }
@@ -73,25 +75,39 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   },
   addMaster: async (type, data) => {
     const item = await api<any>(`/api/${type}`, { method: 'POST', body: JSON.stringify(data) });
-    const key = type.replace('-', '') as 'classrooms'|'teachers'|'subjects'|'timeSlots';
+    const mapping: Record<string, keyof SchedulerState> = {
+      'classrooms': 'classrooms',
+      'teachers': 'teachers',
+      'subjects': 'subjects',
+      'time-slots': 'timeSlots',
+      'master-schedules': 'masterSchedule'
+    };
+    const key = mapping[type];
     set(s => ({ [key]: [...(s[key] as any[]).filter(x => x.id !== item.id), item] } as any));
   },
   removeMaster: async (type, id) => {
     await api(`/api/${type}/${id}`, { method: 'DELETE' });
-    const key = type.replace('-', '') as 'classrooms'|'teachers'|'subjects'|'timeSlots';
+    const mapping: Record<string, keyof SchedulerState> = {
+      'classrooms': 'classrooms',
+      'teachers': 'teachers',
+      'subjects': 'subjects',
+      'time-slots': 'timeSlots',
+      'master-schedules': 'masterSchedule'
+    };
+    const key = mapping[type];
     set(s => ({ [key]: (s[key] as any[]).filter(x => x.id !== id) } as any));
   }
 }));
-export const getResolvedSchedule = (assignments: Assignment[]): ResolvedEntry[] => {
-  return MASTER_SCHEDULE.map(master => {
+export const getResolvedSchedule = (assignments: Assignment[], masterSchedule: MasterScheduleEntry[]): ResolvedEntry[] => {
+  return masterSchedule.map(master => {
     const assignment = assignments.find(
       a => a.classroomId === master.classroomId && a.subjectId === master.subjectId
     );
     return { ...master, teacherId: assignment?.teacherId };
   });
 };
-export const getConflicts = (assignments: Assignment[]): Conflict[] => {
-  const resolved = getResolvedSchedule(assignments);
+export const getConflicts = (assignments: Assignment[], masterSchedule: MasterScheduleEntry[]): Conflict[] => {
+  const resolved = getResolvedSchedule(assignments, masterSchedule);
   const teacherTimeMap: Record<string, Record<string, string[]>> = {};
   resolved.forEach(entry => {
     if (!entry.teacherId || !entry.timeSlotId) return;

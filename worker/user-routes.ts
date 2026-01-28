@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { AssignmentEntity, ClassroomEntity, TeacherEntity, SubjectEntity, TimeSlotEntity } from "./scheduler-entities";
+import { AssignmentEntity, ClassroomEntity, TeacherEntity, SubjectEntity, TimeSlotEntity, MasterScheduleEntity } from "./scheduler-entities";
 import { ok, bad, isStr } from './core-utils';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // Assignments
@@ -30,7 +30,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     app.post(path, async (c) => {
       const data = await c.req.json();
-      if (!data.id) data.id = crypto.randomUUID();
+      if (!data.id) {
+        // Use custom keyOf if available, else random
+        data.id = entity.keyOf ? entity.keyOf(data) : crypto.randomUUID();
+      }
       const item = await entity.create(c.env, data);
       return ok(c, item);
     });
@@ -44,4 +47,5 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   registerCrud('/api/teachers', TeacherEntity);
   registerCrud('/api/subjects', SubjectEntity);
   registerCrud('/api/time-slots', TimeSlotEntity);
+  registerCrud('/api/master-schedules', MasterScheduleEntity);
 }
