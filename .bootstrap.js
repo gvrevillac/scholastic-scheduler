@@ -77,7 +77,10 @@ function updateWranglerJsonc() {
 }
 
 function runSetupCommands() {
-    const commands = [];
+    const commands = [
+    "bun add jspdf@^2.5.1",
+    "bun add jspdf-autotable@^3.8.2"
+];
     
     if (commands.length === 0) {
         console.log('⊘ No setup commands to run');
