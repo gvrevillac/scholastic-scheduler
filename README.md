@@ -1,6 +1,6 @@
 # Scholastic Scheduler
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/gvrevillac/scholastic-scheduler)
 
 A production-ready full-stack chat application built on Cloudflare Workers. Features real-time chat boards, user management, and scalable storage using a single shared Durable Object namespace for multiple entity types. Includes a modern React frontend with shadcn/ui, Tailwind CSS, and TanStack Query for seamless development.
 
@@ -122,7 +122,7 @@ const users = await api<User[]>('/api/users');
    ```
    Or one-click deploy:
 
-   [cloudflarebutton]
+   [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/gvrevillac/scholastic-scheduler)
 
 3. Set up custom domain in Workers dashboard (optional).
 
