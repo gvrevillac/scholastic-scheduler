@@ -1,20 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { useSchedulerStore, getResolvedSchedule, getConflicts } from '@/store/scheduler-store';
+import { useSchedulerStore, getConflicts } from '@/store/scheduler-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ConflictBadge } from './ConflictBadge';
 import { Calendar, Users, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 export function ScheduleVisualizer() {
-  const assignments = useSchedulerStore(s => s.assignments);
+  const scheduleEntries = useSchedulerStore(s => s.scheduleEntries);
   const classrooms = useSchedulerStore(s => s.classrooms);
   const subjects = useSchedulerStore(s => s.subjects);
   const teachers = useSchedulerStore(s => s.teachers);
   const timeSlots = useSchedulerStore(s => s.timeSlots);
-  const masterSchedule = useSchedulerStore(s => s.masterSchedule);
-  const resolved = useMemo(() => getResolvedSchedule(assignments, masterSchedule), [assignments, masterSchedule]);
-  const conflicts = useMemo(() => getConflicts(assignments, masterSchedule), [assignments, masterSchedule]);
   const [activeTab, setActiveTab] = useState('time');
+  const conflicts = useMemo(() => getConflicts(scheduleEntries), [scheduleEntries]);
   const findConflict = (teacherId?: string, timeSlotId?: string) => {
     if (!teacherId || !timeSlotId) return null;
     return conflicts.find(c => c.teacherId === teacherId && c.timeSlotId === timeSlotId);
@@ -61,8 +59,8 @@ export function ScheduleVisualizer() {
                       <div className="text-sm">{slot.startTime} - {slot.endTime}</div>
                     </TableCell>
                     {classrooms.map(classroom => {
-                      const entry = resolved.find(e => e.timeSlotId === slot.id && e.classroomId === classroom.id);
-                      if (!entry) return <TableCell key={classroom.id} className="bg-slate-50/10 border-l" />;
+                      const entry = scheduleEntries.find(e => e.timeSlotId === slot.id && e.classroomId === classroom.id);
+                      if (!entry || !entry.subjectId) return <TableCell key={classroom.id} className="bg-slate-50/10 border-l" />;
                       const subject = subjects.find(s => s.id === entry.subjectId);
                       const teacher = teachers.find(t => t.id === entry.teacherId);
                       const conflict = findConflict(entry.teacherId, entry.timeSlotId);
@@ -91,8 +89,8 @@ export function ScheduleVisualizer() {
                 <CardHeader className="py-3 bg-white dark:bg-slate-900 border-b"><CardTitle className="text-sm font-bold">{classroom.name}</CardTitle></CardHeader>
                 <CardContent className="p-3 space-y-2">
                   {timeSlots.map(slot => {
-                    const entry = resolved.find(e => e.timeSlotId === slot.id && e.classroomId === classroom.id);
-                    if (!entry) return null;
+                    const entry = scheduleEntries.find(e => e.timeSlotId === slot.id && e.classroomId === classroom.id);
+                    if (!entry || !entry.subjectId) return null;
                     const subject = subjects.find(s => s.id === entry.subjectId);
                     const teacher = teachers.find(t => t.id === entry.teacherId);
                     const conflict = findConflict(entry.teacherId, entry.timeSlotId);
@@ -115,7 +113,7 @@ export function ScheduleVisualizer() {
         {activeTab === 'teacher' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {teachers.map(teacher => {
-              const schedule = resolved.filter(r => r.teacherId === teacher.id);
+              const schedule = scheduleEntries.filter(r => r.teacherId === teacher.id && r.subjectId);
               return (
                 <Card key={teacher.id} className="border">
                   <CardHeader className="py-3 bg-indigo-50/50 dark:bg-indigo-950/20"><CardTitle className="text-sm font-bold flex justify-between items-center">

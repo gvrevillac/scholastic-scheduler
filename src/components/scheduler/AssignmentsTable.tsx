@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSchedulerStore } from '@/store/scheduler-store';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -6,18 +6,21 @@ import { Trash2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 export function AssignmentsTable() {
-  const assignments = useSchedulerStore(s => s.assignments);
+  const scheduleEntries = useSchedulerStore(s => s.scheduleEntries);
   const classrooms = useSchedulerStore(s => s.classrooms);
   const subjects = useSchedulerStore(s => s.subjects);
   const teachers = useSchedulerStore(s => s.teachers);
-  const removeAssignment = useSchedulerStore(s => s.removeAssignment);
+  const removeScheduleEntry = useSchedulerStore(s => s.removeScheduleEntry);
   const loading = useSchedulerStore(s => s.loading);
-  const getClassName = (id: string) => classrooms.find(c => c.id === id)?.name || "Deleted Class";
-  const getSubjectName = (id: string) => subjects.find(s => s.id === id)?.name || "Deleted Subject";
-  const getTeacherName = (id: string) => teachers.find(t => t.id === id)?.name || "Deleted Teacher";
+  const assignments = useMemo(() => {
+    return scheduleEntries.filter(e => e.teacherId && e.subjectId);
+  }, [scheduleEntries]);
+  const getClassName = (id: string) => classrooms.find(c => c.id === id)?.name || "N/A";
+  const getSubjectName = (id: string) => subjects.find(s => s.id === id)?.name || "N/A";
+  const getTeacherName = (id: string) => teachers.find(t => t.id === id)?.name || "N/A";
   const handleDelete = async (id: string) => {
     try {
-      await removeAssignment(id);
+      await removeScheduleEntry(id);
       toast.success('Assignment deleted');
     } catch (err) {
       toast.error('Failed to delete assignment');
@@ -28,7 +31,7 @@ export function AssignmentsTable() {
       <Card className="bg-slate-50 border-dashed border-2 h-full">
         <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <AlertCircle className="w-12 h-12 mb-4 opacity-20" />
-          <p>No active assignments. Start by using the form.</p>
+          <p>No active assignments. Start by using the form or matrix.</p>
         </CardContent>
       </Card>
     );

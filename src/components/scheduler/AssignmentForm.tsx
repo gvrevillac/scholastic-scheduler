@@ -13,26 +13,41 @@ export function AssignmentForm() {
   const classrooms = useSchedulerStore(s => s.classrooms);
   const subjects = useSchedulerStore(s => s.subjects);
   const teachers = useSchedulerStore(s => s.teachers);
-  const masterSchedule = useSchedulerStore(s => s.masterSchedule);
-  const addAssignment = useSchedulerStore(s => s.addAssignment);
+  const scheduleEntries = useSchedulerStore(s => s.scheduleEntries);
+  const upsertScheduleEntry = useSchedulerStore(s => s.upsertScheduleEntry);
   const loading = useSchedulerStore(s => s.loading);
   const availableSubjects = useMemo(() => {
     if (!classroomId) return [];
-    // Filter subjects that are actually scheduled for this classroom
-    const scheduledSubjectIds = masterSchedule
-      .filter(ms => ms.classroomId === classroomId)
-      .map(ms => ms.subjectId);
-    return subjects.filter(s => scheduledSubjectIds.includes(s.id));
-  }, [classroomId, subjects, masterSchedule]);
+    const scheduledSubjectIds = scheduleEntries
+      .filter(se => se.classroomId === classroomId && se.subjectId)
+      .map(se => se.subjectId);
+    const uniqueIds = Array.from(new Set(scheduledSubjectIds));
+    return subjects.filter(s => uniqueIds.includes(s.id));
+  }, [classroomId, subjects, scheduleEntries]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!classroomId || !subjectId || !teacherId) {
       toast.error('Please select all fields');
       return;
     }
+    // Find all slots for this classroom/subject combination
+    const targetEntries = scheduleEntries.filter(
+      se => se.classroomId === classroomId && se.subjectId === subjectId
+    );
+    if (targetEntries.length === 0) {
+      toast.error('This subject is not scheduled for the selected classroom.');
+      return;
+    }
     try {
-      await addAssignment({ classroomId, subjectId, teacherId });
-      toast.success('Assignment saved');
+      await Promise.all(targetEntries.map(entry => 
+        upsertScheduleEntry({
+          classroomId: entry.classroomId,
+          timeSlotId: entry.timeSlotId,
+          subjectId: entry.subjectId,
+          teacherId: teacherId
+        })
+      ));
+      toast.success('Teacher assigned to all subject periods');
       setSubjectId('');
       setTeacherId('');
     } catch (err) {
@@ -74,7 +89,7 @@ export function AssignmentForm() {
               {classroomId && availableSubjects.length === 0 && (
                 <div className="flex items-center gap-1.5 text-[11px] text-amber-600 font-medium mt-1">
                   <Info className="w-3.5 h-3.5" />
-                  <span>No subjects scheduled for this classroom yet.</span>
+                  <span>No subjects scheduled for this classroom yet. Use the matrix to add subjects first.</span>
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-import { Classroom, Subject, Teacher, TimeSlot, MasterScheduleEntry, User, Chat, ChatMessage } from './types';
+import { Classroom, Subject, Teacher, TimeSlot, User, Chat, ChatMessage } from './types';
 export const CLASSROOMS: Classroom[] = [
   { id: '1a', name: 'Grade 1-A' },
   { id: '1b', name: 'Grade 1-B' },
@@ -35,7 +35,7 @@ export const TIME_SLOTS: TimeSlot[] = [
   { id: 'thu2', day: 'Thursday', startTime: '09:00', endTime: '10:00' },
 ];
 // Master Schedule: Defines when each subject occurs for each class
-export const MASTER_SCHEDULE: MasterScheduleEntry[] = [
+export const MASTER_SCHEDULE = [
   // Grade 1-A
   { classroomId: '1a', subjectId: 'math', timeSlotId: 'mon1' },
   { classroomId: '1a', subjectId: 'eng', timeSlotId: 'mon2' },

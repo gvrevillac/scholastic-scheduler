@@ -40,13 +40,13 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
         api<TimeSlot[]>('/api/time-slots'),
         api<ScheduleEntry[]>('/api/schedule-entries'),
       ]);
-      set({ 
-        classrooms: c, 
-        teachers: t, 
-        subjects: s, 
-        timeSlots: ts, 
-        scheduleEntries: se, 
-        loading: false 
+      set({
+        classrooms: c,
+        teachers: t,
+        subjects: s,
+        timeSlots: ts,
+        scheduleEntries: se,
+        loading: false
       });
     } catch (err) {
       set({ error: "Failed to fetch resource library", loading: false });
@@ -54,7 +54,6 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   },
   upsertScheduleEntry: async (payload) => {
     const id = `${payload.classroomId}_${payload.timeSlotId}`;
-    // Optimistic Update
     const oldEntries = get().scheduleEntries;
     const newEntry = { ...payload, id };
     set({ scheduleEntries: [...oldEntries.filter(e => e.id !== id), newEntry] });
@@ -64,7 +63,7 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
         body: JSON.stringify(newEntry),
       });
     } catch (err) {
-      set({ scheduleEntries: oldEntries }); // Rollback
+      set({ scheduleEntries: oldEntries });
       throw err;
     }
   },
@@ -97,9 +96,9 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
       });
       const current = get().scheduleEntries;
       const ids = new Set(results.map(r => r.id));
-      set({ 
+      set({
         scheduleEntries: [...current.filter(c => !ids.has(c.id)), ...results],
-        loading: false 
+        loading: false
       });
     } catch (err) {
       set({ loading: false });
