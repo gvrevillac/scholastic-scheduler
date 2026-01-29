@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSchedulerStore } from '@/store/scheduler-store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,19 +7,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, CalendarClock } from 'lucide-react';
+import { Plus, Trash2, CalendarClock, Download, Upload, Trash } from 'lucide-react';
 import { toast } from 'sonner';
+import { EditableScheduleGrid } from './EditableScheduleGrid';
+import { generateScheduleTemplate, parseScheduleImport } from '@/lib/excel-template-utils';
 export function MasterDataManager() {
   const classrooms = useSchedulerStore(s => s.classrooms);
   const teachers = useSchedulerStore(s => s.teachers);
   const subjects = useSchedulerStore(s => s.subjects);
   const timeSlots = useSchedulerStore(s => s.timeSlots);
-  const masterSchedule = useSchedulerStore(s => s.masterSchedule);
   const addMaster = useSchedulerStore(s => s.addMaster);
   const removeMaster = useSchedulerStore(s => s.removeMaster);
+  const clearAll = useSchedulerStore(s => s.clearAllScheduleEntries);
+  const bulkUpsert = useSchedulerStore(s => s.bulkUpsertEntries);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
-  const handleAdd = async (type: any, data: any) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const entries = await parseScheduleImport(file, classrooms, teachers, subjects, timeSlots);
+      await bulkUpsert(entries);
+      toast.success(`Successfully imported ${entries.length} entries`);
+    } catch (err) {
+      toast.error("Failed to parse Excel file");
+    }
+  };
+  const handleAdd = async (type: string, data: any) => {
     try {
       await addMaster(type, data);
       toast.success('Resource saved');
@@ -28,7 +42,7 @@ export function MasterDataManager() {
       toast.error('Failed to save');
     }
   };
-  const handleRemove = async (type: any, id: string) => {
+  const handleRemove = async (type: string, id: string) => {
     try {
       await removeMaster(type, id);
       toast.success('Resource removed');
@@ -39,17 +53,40 @@ export function MasterDataManager() {
   return (
     <Card className="border-none shadow-soft">
       <CardContent className="pt-6">
-        <Tabs defaultValue="classrooms">
+        <Tabs defaultValue="schedule">
           <TabsList className="grid grid-cols-5 mb-6">
+            <TabsTrigger value="schedule">Schedule Matrix</TabsTrigger>
             <TabsTrigger value="classrooms">Classes</TabsTrigger>
             <TabsTrigger value="teachers">Teachers</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
-            <TabsTrigger value="timeslots">Slots</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="timeslots">Time Slots</TabsTrigger>
           </TabsList>
+          <TabsContent value="schedule" className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-dashed">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-lg">Master Timetable</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => generateScheduleTemplate(classrooms, teachers, subjects, timeSlots)}>
+                  <Download className="w-4 h-4 mr-2" /> Template
+                </Button>
+                <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".xlsx,.xls" />
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2" /> Import XLSX
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => {
+                  if(confirm("Are you sure you want to clear all assignments?")) clearAll();
+                }}>
+                  <Trash className="w-4 h-4 mr-2" /> Clear All
+                </Button>
+              </div>
+            </div>
+            <EditableScheduleGrid />
+          </TabsContent>
           <TabsContent value="classrooms">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Classrooms</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">Classrooms</h3>
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> New Class</Button></DialogTrigger>
                 <DialogContent>
@@ -80,7 +117,7 @@ export function MasterDataManager() {
           </TabsContent>
           <TabsContent value="teachers">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Teachers</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">Teachers</h3>
               <Dialog>
                 <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> New Teacher</Button></DialogTrigger>
                 <DialogContent>
@@ -113,7 +150,7 @@ export function MasterDataManager() {
           </TabsContent>
           <TabsContent value="subjects">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Subjects</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">Subjects</h3>
               <Dialog>
                 <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> New Subject</Button></DialogTrigger>
                 <DialogContent>
@@ -123,7 +160,7 @@ export function MasterDataManager() {
                     handleAdd('subjects', { name: e.target.name.value, color: e.target.color.value });
                   }} className="space-y-4">
                     <div className="space-y-2"><Label>Name</Label><Input name="name" required /></div>
-                    <div className="space-y-2"><Label>Color</Label><Input name="color" type="color" defaultValue="#4f46e5" className="h-12" required /></div>
+                    <div className="space-y-2"><Label>Color</Label><Input name="color" type="color" defaultValue="#4f46e5" className="h-12 w-full" required /></div>
                     <Button type="submit" className="w-full">Save Subject</Button>
                   </form>
                 </DialogContent>
@@ -135,7 +172,7 @@ export function MasterDataManager() {
                 {subjects.map(s => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell><div className="w-8 h-4 rounded border" style={{ backgroundColor: s.color }} /></TableCell>
+                    <TableCell><div className="w-12 h-6 rounded border" style={{ backgroundColor: s.color }} /></TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => handleRemove('subjects', s.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                     </TableCell>
@@ -145,8 +182,8 @@ export function MasterDataManager() {
             </Table>
           </TabsContent>
           <TabsContent value="timeslots">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Time Slots</h3>
+             <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">Time Slots</h3>
               <Dialog>
                 <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> New Slot</Button></DialogTrigger>
                 <DialogContent>
@@ -186,69 +223,6 @@ export function MasterDataManager() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          </TabsContent>
-          <TabsContent value="schedule">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <CalendarClock className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-lg">Master Timetable</h3>
-              </div>
-              <Dialog>
-                <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> New Lesson</Button></DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Schedule New Lesson</DialogTitle></DialogHeader>
-                  <form onSubmit={(e: any) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    handleAdd('master-schedules', {
-                      classroomId: formData.get('classroomId'),
-                      timeSlotId: formData.get('timeSlotId'),
-                      subjectId: formData.get('subjectId')
-                    });
-                  }} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Classroom</Label>
-                      <select name="classroomId" className="w-full p-2 rounded border bg-background" required>
-                        {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Time Slot</Label>
-                      <select name="timeSlotId" className="w-full p-2 rounded border bg-background" required>
-                        {timeSlots.map(ts => <option key={ts.id} value={ts.id}>{ts.day} {ts.startTime}-{ts.endTime}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Subject</Label>
-                      <select name="subjectId" className="w-full p-2 rounded border bg-background" required>
-                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
-                    </div>
-                    <Button type="submit" className="w-full">Save Lesson</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <Table>
-              <TableHeader><TableRow><TableHead>Classroom</TableHead><TableHead>Time Slot</TableHead><TableHead>Subject</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {masterSchedule.map(ms => {
-                  const cls = classrooms.find(c => c.id === ms.classroomId);
-                  const ts = timeSlots.find(t => t.id === ms.timeSlotId);
-                  const sub = subjects.find(s => s.id === ms.subjectId);
-                  return (
-                    <TableRow key={ms.id || `${ms.classroomId}_${ms.timeSlotId}`}>
-                      <TableCell className="font-medium">{cls?.name || 'Deleted Class'}</TableCell>
-                      <TableCell>{ts ? `${ts.day} ${ts.startTime}` : 'Deleted Slot'}</TableCell>
-                      <TableCell><span className="font-bold" style={{ color: sub?.color }}>{sub?.name || 'Deleted Subject'}</span></TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemove('master-schedules', ms.id || `${ms.classroomId}_${ms.timeSlotId}`)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
               </TableBody>
             </Table>
           </TabsContent>

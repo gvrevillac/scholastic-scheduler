@@ -1,27 +1,9 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { AssignmentEntity, ClassroomEntity, TeacherEntity, SubjectEntity, TimeSlotEntity, MasterScheduleEntity } from "./scheduler-entities";
+import { ScheduleEntryEntity, ClassroomEntity, TeacherEntity, SubjectEntity, TimeSlotEntity } from "./scheduler-entities";
 import { ok, bad, isStr } from './core-utils';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // Assignments
-  app.get('/api/assignments', async (c) => {
-    const page = await AssignmentEntity.list(c.env);
-    return ok(c, page.items);
-  });
-  app.post('/api/assignments', async (c) => {
-    const body = await c.req.json();
-    const { classroomId, subjectId, teacherId } = body;
-    if (!isStr(classroomId) || !isStr(subjectId) || !isStr(teacherId)) return bad(c, 'Missing required fields');
-    const id = `${classroomId}_${subjectId}`;
-    const assignment = await AssignmentEntity.create(c.env, { id, classroomId, subjectId, teacherId });
-    return ok(c, assignment);
-  });
-  app.delete('/api/assignments/:id', async (c) => {
-    const id = c.req.param('id');
-    await AssignmentEntity.delete(c.env, id);
-    return ok(c, { id });
-  });
-  // Resource CRUD helper generator
+  // CRUD helper generator
   const registerCrud = (path: string, entity: any) => {
     app.get(path, async (c) => {
       await entity.ensureSeed(c.env);
@@ -31,7 +13,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     app.post(path, async (c) => {
       const data = await c.req.json();
       if (!data.id) {
-        // Use custom keyOf if available, else random
         data.id = entity.keyOf ? entity.keyOf(data) : crypto.randomUUID();
       }
       const item = await entity.create(c.env, data);
@@ -43,9 +24,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return ok(c, { id });
     });
   };
+  // Resources
   registerCrud('/api/classrooms', ClassroomEntity);
   registerCrud('/api/teachers', TeacherEntity);
   registerCrud('/api/subjects', SubjectEntity);
   registerCrud('/api/time-slots', TimeSlotEntity);
-  registerCrud('/api/master-schedules', MasterScheduleEntity);
+  registerCrud('/api/schedule-entries', ScheduleEntryEntity);
+  // Bulk operation for Excel Imports
+  app.post('/api/schedule-entries/bulk', async (c) => {
+    const entries = await c.req.json<any[]>();
+    if (!Array.isArray(entries)) return bad(c, 'Expected array');
+    const results = await Promise.all(entries.map(e => {
+      const id = e.id || `${e.classroomId}_${e.timeSlotId}`;
+      return ScheduleEntryEntity.create(c.env, { ...e, id });
+    }));
+    return ok(c, results);
+  });
+  // Clear all for resets
+  app.delete('/api/schedule-entries/all', async (c) => {
+    const page = await ScheduleEntryEntity.list(c.env);
+    const ids = page.items.map(i => i.id);
+    await ScheduleEntryEntity.deleteMany(c.env, ids);
+    return ok(c, { count: ids.length });
+  });
 }

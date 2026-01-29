@@ -24,14 +24,14 @@ export interface Teacher {
   name: string;
   specialty: string;
 }
-export interface MasterScheduleEntry {
+/**
+ * Unified model for a lesson slot
+ * Represents a specific subject taught by a teacher in a classroom at a specific time
+ */
+export interface ScheduleEntry {
+  id: string; // formatted as classroomId_timeSlotId
   classroomId: string;
-  subjectId: string;
   timeSlotId: string;
-}
-export interface Assignment {
-  id: string; // combination of classroomId_subjectId
-  classroomId: string;
   subjectId: string;
   teacherId: string;
 }

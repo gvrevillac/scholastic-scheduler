@@ -1,22 +1,22 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Assignment, Classroom, Subject, Teacher, TimeSlot } from '@shared/types';
-import { getResolvedSchedule } from '@/store/scheduler-store';
+import { ScheduleEntry, Classroom, Subject, Teacher, TimeSlot } from '@shared/types';
 export function exportScheduleToPdf(
-  assignments: Assignment[],
+  scheduleEntries: ScheduleEntry[],
   classrooms: Classroom[],
   subjects: Subject[],
   teachers: Teacher[],
   timeSlots: TimeSlot[]
 ) {
-  const doc = new jsPDF();
-  const resolved = getResolvedSchedule(assignments);
+  const doc = new jsPDF('landscape');
   const timestamp = new Date().toLocaleString();
-  doc.setFontSize(20);
-  doc.text('Scholastic Scheduler - Master Report', 14, 22);
+  doc.setFontSize(22);
+  doc.setTextColor(79, 70, 229); // indigo-600
+  doc.text('Scholastic Scheduler - Master Report', 14, 20);
   doc.setFontSize(10);
-  doc.text(`Generated on: ${timestamp}`, 14, 30);
-  const tableData = resolved.map(entry => {
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text(`Generated on: ${timestamp}`, 14, 28);
+  const tableData = scheduleEntries.map(entry => {
     const classroom = classrooms.find(c => c.id === entry.classroomId)?.name || "N/A";
     const subject = subjects.find(s => s.id === entry.subjectId)?.name || "N/A";
     const slot = timeSlots.find(t => t.id === entry.timeSlotId);
@@ -25,11 +25,13 @@ export function exportScheduleToPdf(
     return [classroom, subject, timeStr, teacher];
   });
   autoTable(doc, {
-    startY: 40,
+    startY: 35,
     head: [['Classroom', 'Subject', 'Time Slot', 'Teacher']],
     body: tableData,
     theme: 'striped',
-    headStyles: { fillColor: [79, 70, 229] },
+    headStyles: { fillColor: [79, 70, 229], fontStyle: 'bold' },
+    styles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
   });
-  doc.save(`school-schedule-${Date.now()}.pdf`);
+  doc.save(`Scholastic-Master-${Date.now()}.pdf`);
 }
